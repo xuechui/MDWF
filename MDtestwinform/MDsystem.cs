@@ -171,7 +171,7 @@ namespace MDtestwinform
             if (stepCount % stepDiffuse == 0)
             {
                 EvalDiffusion();
-                Console.WriteLine("diffusion:" + rrDiffuseAv[0]);
+                
             }
                
         }
@@ -386,7 +386,7 @@ namespace MDtestwinform
                 if(tBuf[nb].GetCount == nValDiffuse)
                 {
                     for(int j = 0; j < nValDiffuse; j++)
-                        rrDiffuseAv[j] = 0;
+                        rrDiffuseAv[j] += tBuf[nb].GetrrDiffuse[j];
                     tBuf[nb].SetCount(0);
                     ++countDiffuseAv;
                     if(countDiffuseAv == limitDiffusivaAv)
@@ -395,6 +395,7 @@ namespace MDtestwinform
                             deltaT * limitDiffusivaAv);
                         for (int j = 1; j < nValDiffuse; j++)
                             rrDiffuseAv[j] *= fac / j;
+                        Console.WriteLine("diffusion:" + rrDiffuseAv[8]);
                         ZeroDiffusion();
                     }
                 }

@@ -17,6 +17,7 @@ namespace MDtestwinform
         public void SetCount(int a) { count = a; }
         public List<VecR> GetorgR { get { return orgR; } }
         public List<VecR> GetrTrue { get { return rTrue; } }
+        public List<double> GetrrDiffuse { get { return rrDiffuse; } }
 
 
         public void AddorigR(VecR r)
