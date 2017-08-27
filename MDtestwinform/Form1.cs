@@ -19,7 +19,6 @@ namespace MDtestwinform
         {
             InitializeComponent();
         }
-
         
         private void Update(int per, List<Node> nodes, VecR region,int step)
         {
@@ -32,7 +31,18 @@ namespace MDtestwinform
             {
                 float x = (float)((node.Getr.x + 0.5 * region.x) * pictureBox1.Width / region.x);
                 float y = (float)((node.Getr.y + 0.5 * region.y) * pictureBox1.Height / region.y);
-                g.DrawEllipse(new Pen(Color.Black), x, y, radius, radius);
+                try { g.DrawEllipse(new Pen(Color.Black), x, y, radius, radius); }
+                catch (OverflowException)
+                {
+                    if (listen.ThreadState == ThreadState.Running)
+                    {
+                        listen.Abort();
+                        do { Thread.Sleep(100); } while (listen.ThreadState == ThreadState.Running);
+                    }
+                    buttonStart.Enabled = true;
+                    MessageBox.Show("Overflow error.");
+                }
+               
           //      Console.WriteLine(x);
                 pictureBox1.Image = bmp;
                 Step.Text = step.ToString();
@@ -43,7 +53,11 @@ namespace MDtestwinform
         private void DoWork()
         {
             Network network = new Network();
-            network.Set();
+
+            Param pa = new Param(double.Parse(densityBox.Text));
+            network.TransferedParams(pa);
+
+            network.Set();         
 
             for (int i = 0; i < 100000; i++)
             {
@@ -67,10 +81,14 @@ namespace MDtestwinform
         private void buttonStart_Click(object sender, EventArgs e)
         {
             buttonStart.Enabled = false;
+           
             listen = new Thread(new ThreadStart(DoWork));
    //         listen.IsBackground = true;
             listen.Start();
 
+        }
+        private void TransferParams()
+        {
         }
 
         private void resume_Click(object sender, EventArgs e)
@@ -80,9 +98,13 @@ namespace MDtestwinform
 
         private void Stop_Click(object sender, EventArgs e)
         {
-            if(listen.ThreadState == ThreadState.Running)
+            if (listen.ThreadState == ThreadState.Running)
+            {
                 listen.Abort();
+                do { Thread.Sleep(100); } while (listen.ThreadState == ThreadState.Running);
+            }
             buttonStart.Enabled = true;
         }
+
     }
 }

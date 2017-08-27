@@ -35,6 +35,7 @@
             this.resume = new System.Windows.Forms.Button();
             this.Stop = new System.Windows.Forms.Button();
             this.Step = new System.Windows.Forms.TextBox();
+            this.densityBox = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.SuspendLayout();
             // 
@@ -53,7 +54,7 @@
             this.pictureBox1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.pictureBox1.Location = new System.Drawing.Point(96, 12);
             this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(578, 428);
+            this.pictureBox1.Size = new System.Drawing.Size(576, 361);
             this.pictureBox1.TabIndex = 1;
             this.pictureBox1.TabStop = false;
             // 
@@ -101,9 +102,18 @@
             this.Step.Size = new System.Drawing.Size(100, 19);
             this.Step.TabIndex = 6;
             // 
+            // densityBox
+            // 
+            this.densityBox.Location = new System.Drawing.Point(443, 436);
+            this.densityBox.Name = "densityBox";
+            this.densityBox.Size = new System.Drawing.Size(100, 19);
+            this.densityBox.TabIndex = 7;
+            this.densityBox.Text = "0.85";
+            // 
             // Form1
             // 
             this.ClientSize = new System.Drawing.Size(760, 599);
+            this.Controls.Add(this.densityBox);
             this.Controls.Add(this.Step);
             this.Controls.Add(this.Stop);
             this.Controls.Add(this.resume);
@@ -127,6 +137,7 @@
         private System.Windows.Forms.Button resume;
         private System.Windows.Forms.Button Stop;
         private System.Windows.Forms.TextBox Step;
+        private System.Windows.Forms.TextBox densityBox;
     }
    
 

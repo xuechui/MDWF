@@ -13,13 +13,10 @@ namespace MDtestwinform
         {
             density = den;
         }
+        public double GetDen { get { return density; } }
     }
 
 
-    class MDsystem
-    {
-        private Network network;
-    }
     class Network
     {
         private int nMol;
@@ -28,9 +25,10 @@ namespace MDtestwinform
         private double uSum = 0; private double virSum = 0;
         private VecR vSum;
         private double vvSum;
-        private double deltaT = 0.01;
+        private double deltaT = 0.006;
         private int NDIM = 3;  //system dimension
-        private double temperature = 10;
+        private double temperature = 1.0;
+        private double avgChainLen;
 
         private List<Node> nodes;
         //Parameters:
@@ -40,6 +38,14 @@ namespace MDtestwinform
         private double velMag;   //To scale velcity
         private Prop kinEnergy, pressure, totEnergy;
 
+        /// <summary>
+        /// Parameters to calculate diffusion
+        /// </summary>
+        private int countDiffuseAv, limitDiffusivaAv, nBuffDiffuse,
+            nValDiffuse, stepDiffuse;
+        List<TBuf> tBuf;
+        private List<double> rrDiffuseAv = new List<double>();
+        
         public List<Node> GetNodes { get { return nodes; } }
 
         public VecR GetRegion { get { return region; } }
@@ -54,23 +60,36 @@ namespace MDtestwinform
             SetupJob();
         }
 
+        public void TransferedParams(Param para)
+        {
+            density = para.GetDen;
+        }
+
         public void SetParams()
         {
             //Cut-off radius
             rCut = Math.Pow(2.0, 1.0 / 6.0);
-            density = 0.8;
+    //        density = 0.85;
             initUcell = new VecI(3, 3, 3);  //Firstly manually assign the cell
             nMol = initUcell.x * initUcell.y * initUcell.z;
             velMag = Math.Sqrt(NDIM * (1.0 - 1.0 / nMol) * temperature);
 
             double fac = 1.0 / Math.Pow(density, 1.0 / 3.0);
             region = new VecR(fac * initUcell.x, fac * initUcell.y, fac * initUcell.z);
+
+            //Set Diffusion Params
+            nValDiffuse = 10;
+            nBuffDiffuse = 1;
+            limitDiffusivaAv = 100;
+            stepDiffuse = 10;
+
         }
         public void SetupJob()
         {
             InitCoords(initUcell, density);
             InitVels();
             InitAccels();
+            InitDiffusion();
             Console.WriteLine("Setup job...deltaT = " + deltaT);
         }
         //Initialize Coordinates
@@ -147,7 +166,14 @@ namespace MDtestwinform
             AddWhiteNoise();
             LeapfrogStep(2);
             EvalProps();
-            Console.WriteLine(pressure.GetVal);
+            if(stepCount % 1000 == 0)
+                Console.WriteLine(avgChainLen + "and" + pressure.GetVal);
+            if (stepCount % stepDiffuse == 0)
+            {
+                EvalDiffusion();
+                Console.WriteLine("diffusion:" + rrDiffuseAv[0]);
+            }
+               
         }
 
         public void ComputeForces()
@@ -205,7 +231,8 @@ namespace MDtestwinform
                         rr = dr.x * dr.x + dr.y * dr.y + dr.z * dr.z;
                         if (rr < 2.25)  //within rc
                         {
-                            fcVal = -90.6 / (1.0 - rr / 2.25);
+                     //       fcVal = -90.6 / (1.0 - rr / 2.25);
+                            fcVal = -20 / (1.0 - rr / 2.25);
                             nodes[j1].VVSAddR(fcVal, dr);
                             nodes[j2].VVSAddR(-fcVal, dr);
                         }
@@ -246,10 +273,8 @@ namespace MDtestwinform
             foreach(Node node in nodes)
             {
                 node.Noise(GaussianRand() * temperature * 6.0);
-            }
-            
+            }           
         }
-
 
             public void LeapfrogStep(int part)
         {
@@ -284,6 +309,12 @@ namespace MDtestwinform
             double vv;
             vSum.VZero();
             vvSum = 0;
+
+            avgChainLen = 0;
+            double chainLen = 0;
+            int chainNum = 0;
+            VecR dr;
+
             foreach (Node node in nodes)
             {
                 vSum.VVAdd(node.Getv);
@@ -293,166 +324,106 @@ namespace MDtestwinform
             kinEnergy.SetVal(0.5 * vvSum / nMol);
             totEnergy.SetVal(kinEnergy.GetVal + uSum / nMol);
             pressure.SetVal(density * (vvSum + virSum)/(nMol * NDIM)  );
-        }
-
-    }
 
 
-    class Node
-    {
-        private VecR r, rv, ra;   //Coordiate, Velocity, Acceleration
-        private List<int> ConNode = new List<int>();
-
-        public List<int> GetCon { get { return ConNode; } }
-        public void AddCon(int con)
-        {
-            ConNode.Add(con);
-        }
-
-        public Node (VecR r, VecR rv, VecR ra)
-        {
-            this.r = r;
-            this.rv = rv;
-            this.ra = ra;
-        }
-        public VecR Getr{ get { return r; } }
-        public VecR Getv{ get { return rv; } }
-        public void Setr(VecR r)  { this.r = r; }
-        public void VZeroA()     //Set Acceleration to zero
-        { ra.x = 0; ra.y = 0; ra.z = 0;   }
-
-        public void Noise(double noise)
-        {
-            ra.x += noise;
-            ra.y += noise;
-            ra.z += noise;
-        }
-
-        public void VVSAddR(double fac, VecR dr)
-        {
-            ra.x += fac * dr.x;
-            ra.y += fac * dr.y;
-            ra.z += fac * dr.z;
-        }
-        public void VVSAddV(double fac, VecR dr)
-        {
-            rv.x += fac * dr.x;
-            rv.y += fac * dr.y;
-            rv.z += fac * dr.z;
-        }
-        public void VWrap(VecR region)
-        {
-            if (r.x >= 0.5 * region.x) { r.x -= region.x; }
-            if (r.x < -0.5 * region.x) { r.x += region.x; }
-            if (r.y >= 0.5 * region.y) { r.y -= region.y; }
-            if (r.y < -0.5 * region.y) { r.y += region.y; }
-            if (r.z >= 0.5 * region.z) { r.z -= region.z; }
-            if (r.z < -0.5 * region.z) { r.z += region.z; }
-        }
-        public void VRand()
-        {
-            Random d = new Random((int)DateTime.Now.Ticks);
-            rv.x = d.NextDouble();
-    //        Console.WriteLine(rv.x);
-            rv.y = d.NextDouble();
-            rv.z = d.NextDouble();
-        }
-        public void VScale(double velMag)
-        {
-            rv.x *= velMag; rv.y *= velMag; rv.z *= velMag;
-        }
-
-
-        public void LeapFrog1(double deltaT)
-        {
-            rv.x += 0.5 * deltaT * ra.x; rv.y += 0.5 * deltaT * ra.y; rv.z += 0.5 * deltaT * ra.z;
-            r.x += deltaT * rv.x; r.y += deltaT * rv.y; r.z += deltaT * rv.z;
-        }
-        public void LeapFrog2(double deltaT)
-        {
-            rv.x += 0.5 * deltaT * ra.x; rv.y += 0.5 * deltaT * ra.y; rv.z += 0.5 * deltaT * ra.z;
-        }
-    }
-
-    public struct VecR
-    {
-        public double x, y, z;
-        public VecR(double x, double y, double z)
-        {
-            this.x = x;
-            this.y = y;
-            this.z = z;
-        }
-        public void VZero()
-        { x = 0; y = 0; z = 0; }
-        public void VWrap(VecR region)
-        {
-            if(x >= 0.5 * region.x){ x -= region.x; }
-            if(x < -0.5 * region.x){ x += region.x; }
-            if (y >= 0.5 * region.y) { y -= region.y; }
-            if (y < -0.5 * region.y) { y += region.y; }
-            if (z >= 0.5 * region.z) { z -= region.z; }
-            if (z < -0.5 * region.z) { z += region.z; }
-        }
-        public void VVAdd(VecR r)
-        {
-            x += r.x;
-            y += r.y;
-            z += r.z;
-        }
-        
-
-    }
-
-    public struct VecI
-    {
-        public int x, y, z;
-        public VecI(int x, int y, int z)
-        {
-            this.x = x;
-            this.y = y;
-            this.z = z;
-        }
-    }
-    public struct Prop
-    {
-        double val, sum, sum2;
-        public Prop(double val,double sum,double sum2)
-        {
-            this.val = val;
-            this.sum = sum;
-            this.sum2 = sum2;
-        }
-        public void SetVal(double value)
-        {
-            val = value;
-        }
-        public double GetVal{ get { return val; } }
-
-        public void PropZero()
-        {
-            sum = 0;
-            sum2 = 0;
-        }
-        public void PropAccum()
-        {
-            sum += val;
-            sum2 += val;
-        }
-        public void PropAvg(int n)
-        {
-            sum /= n;
-
-            sum2 = sum2 / n - Math.Sqrt(sum);
-            if(sum2 <= 0)
+            for (int j1 = 0; j1 < nodes.Count; j1++)
             {
-                sum2 = 0;
+                foreach (int j2 in nodes[j1].GetCon)
+                {
+                    if (j1 < j2)
+                    {
+                        dr.x = nodes[j1].Getr.x - nodes[j2].Getr.x;
+                        dr.y = nodes[j1].Getr.y - nodes[j2].Getr.y;
+                        dr.z = nodes[j1].Getr.z - nodes[j2].Getr.z;
+                        dr.VWrap(region);
+                        chainLen += dr.x * dr.x + dr.y * dr.y + dr.z * dr.z;
+                        chainNum ++;
+                    }
+                }
             }
-            else
+            avgChainLen = chainLen / chainNum;
+        }
+
+        void EvalDiffusion()
+        {
+            VecR dr = new VecR();
+            int  ni;
+            for (int nb = 0; nb < nBuffDiffuse; nb++)
             {
-                sum2 = Math.Sqrt(sum2);
+                if (tBuf[nb].GetCount == 0)
+                {
+                    foreach (Node node in nodes)
+                    {
+                        tBuf[nb].AddorigR(node.Getr);
+                        tBuf[nb].AddrTrue(node.Getr);
+                    }
+                }
+                if (tBuf[nb].GetCount >= 0)
+                {
+                    ni = tBuf[nb].GetCount;
+                    tBuf[nb].InitrrDiffuse(0.0);
+                    for(int n = 0; n < nodes.Count; n ++)
+                    {
+                        dr.VSub(tBuf[nb].GetrTrue[n].Get, nodes[n].Getr);
+                        dr.VDiv(dr.Get, region.Get);
+                        dr.Nint();
+                        dr.VMul(dr.Get, region.Get);
+                        tBuf[nb].GetrTrue[n].Get.VAdd(nodes[n].Getr, dr.Get);
+                        dr.VSub(tBuf[nb].GetrTrue[n].Get, tBuf[nb].GetorgR[n].Get);
+                        tBuf[nb].AddrrDiffuse(ni, dr.VLenSq());
+                    }
+                }
+                tBuf[nb].AddCount();
+            }
+            AccumDiffusion();
+        }
+
+        public void AccumDiffusion()
+        {
+            double fac;
+            for(int nb = 0; nb < nBuffDiffuse; nb ++)
+            {
+                if(tBuf[nb].GetCount == nValDiffuse)
+                {
+                    for(int j = 0; j < nValDiffuse; j++)
+                        rrDiffuseAv[j] = 0;
+                    tBuf[nb].SetCount(0);
+                    ++countDiffuseAv;
+                    if(countDiffuseAv == limitDiffusivaAv)
+                    {
+                        fac = 1.0 / (NDIM * 2 * nMol * stepDiffuse *
+                            deltaT * limitDiffusivaAv);
+                        for (int j = 1; j < nValDiffuse; j++)
+                            rrDiffuseAv[j] *= fac / j;
+                        ZeroDiffusion();
+                    }
+                }
             }
         }
+
+        public void InitDiffusion()
+        {
+            tBuf = new List<TBuf>();
+            for (int nb = 0; nb < nBuffDiffuse; nb++)
+            {
+                tBuf.Add(new TBuf());
+                tBuf[nb].SetCount(-nb * nValDiffuse / nBuffDiffuse);
+            }
+            countDiffuseAv = 0;
+            for (int j = 0; j < nValDiffuse; j++)
+                rrDiffuseAv.Add(0);
+        }
+        public void ZeroDiffusion()
+        {
+            countDiffuseAv = 0;
+            for (int j = 0; j < nValDiffuse; j++)
+                rrDiffuseAv[j] = 0;
+        }
+
     }
 
+
+    
+
+    
 }
