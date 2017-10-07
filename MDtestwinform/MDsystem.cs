@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,11 +10,14 @@ namespace MDtestwinform
     public struct Param
     {
         public double density;
-        public Param(double den)
+        public string filePath;
+        public Param(double den, string fileP)
         {
             density = den;
+            filePath = fileP;
         }
         public double GetDen { get { return density; } }
+        public string GetFilePath { get { return filePath; } }
     }
 
 
@@ -37,6 +41,7 @@ namespace MDtestwinform
         private VecI initUcell;
         private double velMag;   //To scale velcity
         private Prop kinEnergy, pressure, totEnergy;
+        private string filePath;
 
         /// <summary>
         /// Parameters to calculate diffusion
@@ -63,6 +68,7 @@ namespace MDtestwinform
         public void TransferedParams(Param para)
         {
             density = para.GetDen;
+            filePath = para.GetFilePath;
         }
 
         public void SetParams()
@@ -168,12 +174,24 @@ namespace MDtestwinform
             EvalProps();
             if(stepCount % 1000 == 0)
                 Console.WriteLine(avgChainLen + "and" + pressure.GetVal);
+            if (stepCount % 1000 == 0)
+                Output();
             if (stepCount % stepDiffuse == 0)
             {
-                EvalDiffusion();
-                
+                EvalDiffusion();     
             }
                
+        }
+
+        public void Output()
+        {
+            using (StreamWriter w = new StreamWriter(@filePath, true))
+            {
+                int n = 5;
+                double x = 3.14;
+                w.WriteLine("test n = {0}, x = {1}", n, x);
+            }
+
         }
 
         public void ComputeForces()

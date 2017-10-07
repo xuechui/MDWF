@@ -36,6 +36,7 @@
             this.Stop = new System.Windows.Forms.Button();
             this.Step = new System.Windows.Forms.TextBox();
             this.densityBox = new System.Windows.Forms.TextBox();
+            this.filePath = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.SuspendLayout();
             // 
@@ -110,9 +111,18 @@
             this.densityBox.TabIndex = 7;
             this.densityBox.Text = "0.85";
             // 
+            // filePath
+            // 
+            this.filePath.Location = new System.Drawing.Point(443, 554);
+            this.filePath.Name = "filePath";
+            this.filePath.Size = new System.Drawing.Size(100, 19);
+            this.filePath.TabIndex = 8;
+            this.filePath.Text = "C:\\test\\test.txt";
+            // 
             // Form1
             // 
             this.ClientSize = new System.Drawing.Size(760, 599);
+            this.Controls.Add(this.filePath);
             this.Controls.Add(this.densityBox);
             this.Controls.Add(this.Step);
             this.Controls.Add(this.Stop);
@@ -138,6 +148,7 @@
         private System.Windows.Forms.Button Stop;
         private System.Windows.Forms.TextBox Step;
         private System.Windows.Forms.TextBox densityBox;
+        private System.Windows.Forms.TextBox filePath;
     }
    
 

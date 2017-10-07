@@ -54,7 +54,7 @@ namespace MDtestwinform
         {
             Network network = new Network();
 
-            Param pa = new Param(double.Parse(densityBox.Text));
+            Param pa = new Param(double.Parse(densityBox.Text), filePath.Text);
             network.TransferedParams(pa);
 
             network.Set();         
@@ -85,10 +85,8 @@ namespace MDtestwinform
             listen = new Thread(new ThreadStart(DoWork));
    //         listen.IsBackground = true;
             listen.Start();
+            
 
-        }
-        private void TransferParams()
-        {
         }
 
         private void resume_Click(object sender, EventArgs e)
